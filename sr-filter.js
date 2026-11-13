@@ -1,24 +1,34 @@
-// Shadowrocket http-response 脚本模板
+// Shadowrocket 高级过滤、重命名与数量限制脚本
 let body = $response.body;
 
 try {
-    // 1. 对返回的订阅内容进行 Base64 解码
+    // 1. Base64 解码获取原始节点文本
     let decoded = decodeURIComponent(escape(atob(body)));
-    
-    // 2. 按行分割节点
     let lines = decoded.split(/\r?\n/).filter(line => line.trim() !== "");
     
-    // 3. 过滤掉包含特定垃圾关键词的节点
+    // 2. 过滤逻辑：剔除包含 IPv6、回国、测速、广告等不需要的节点
     let filteredLines = lines.filter(line => {
-        let blacklist = /过期|官网|剩余|测速|到期|Kb|Mb/;
+        // 黑名单正则：匹配包含 IPv6、回国、过期、官网、剩余、到期、测速等字样的节点
+        let blacklist = /IPv6|回国|过期|官网|剩余|到期|测速|Kb|Mb|群|关注|定制/i;
         return !blacklist.test(line);
     });
     
-    // 4. 重新拼合并进行 Base64 编码
-    let result = filteredLines.join("\n");
+    // 3. 重命名逻辑（可根据需要添加或修改替换规则）
+    let renamedLines = filteredLines.map(line => {
+        // 示例：将某些特定后缀或词汇进行美化重命名
+        return line
+            .replace(/V2Server - /g, "") // 去除冗余前缀
+            .replace(/\[原生\]/g, " ⚡原生"); // 统一美化“原生”标记
+    });
+    
+    // 4. 数量限制：只保留前 50 个优质节点（可按需调整数字）
+    let limitedLines = renamedLines.slice(0, 50);
+    
+    // 5. 重新拼合并进行 Base64 编码输出
+    let result = limitedLines.join("\n");
     $done({ body: btoa(unescape(encodeURIComponent(result))) });
 
 } catch (e) {
-    console.log("Filter Error: " + e);
+    console.log("Advanced Filter Error: " + e);
     $done({ body: body });
 }
